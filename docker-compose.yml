@@ -6,7 +6,7 @@ services:
       - rpm6:/home/centos/rpmbuild/RPMS
     build:
       context: .
-    image: aursu/libmemc:el6
+    image: aursu/libmemcbuild:el6
   centos7libmemcbuild:
     volumes:
       - rpms:/home/centos/rpmbuild/SRPMS
@@ -14,7 +14,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.el7
-    image: aursu/libmemc:el7
+    image: aursu/libmemcbuild:el7
 
 volumes:
   rpms:

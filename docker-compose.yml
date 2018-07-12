@@ -1,0 +1,25 @@
+version: "3.4"
+services:
+  centos6libmemcbuild:
+    volumes:
+      - rpms:/home/centos/rpmbuild/SRPMS
+      - rpm6:/home/centos/rpmbuild/RPMS
+    build:
+      context: .
+    image: aursu/libmemc:el6
+  centos7libmemcbuild:
+    volumes:
+      - rpms:/home/centos/rpmbuild/SRPMS
+      - rpm7:/home/centos/rpmbuild/RPMS
+    build:
+      context: .
+      dockerfile: Dockerfile.el7
+    image: aursu/libmemc:el7
+
+volumes:
+  rpms:
+    name: rpms
+  rpm6:
+    name: rpm6
+  rpm7:
+    name: rpm7

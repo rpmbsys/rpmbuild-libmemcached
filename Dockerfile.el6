@@ -1,4 +1,4 @@
-FROM aursu/libmemcbuild:7-base
+FROM aursu/libmemcbuild:6-base
 
 COPY SOURCES ${BUILD_TOPDIR}/SOURCES
 COPY SPECS ${BUILD_TOPDIR}/SPECS

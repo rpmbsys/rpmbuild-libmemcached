@@ -1,0 +1,12 @@
+version: "3.4"
+services:
+  centos7libmemcbase:
+    build:
+      context: .
+      dockerfile: Dockerfile.base
+    image: aursu/libmemcbuild:7-base
+  centos6libmemcbase:
+    build:
+      context: .
+      dockerfile: Dockerfile.6-base
+    image: aursu/libmemcbuild:6-base

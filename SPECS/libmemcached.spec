@@ -11,6 +11,9 @@
 %global with_sasl        1
 %global libname          libmemcached
 
+%define _debugsource_template %{nil}
+%define debug_package %{nil}
+
 Name:      libmemcached
 Summary:   Client library and command line tools for memcached server
 Version:   1.0.18
@@ -81,7 +84,7 @@ Requires:   cyrus-sasl-devel%{?_isa}
 
 %description devel
 This package contains the header files and development libraries
-for %{name}. If you like to develop programs using %{name}, 
+for %{name}. If you like to develop programs using %{name},
 you will need to install %{name}-devel.
 
 

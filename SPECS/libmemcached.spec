@@ -155,7 +155,7 @@ rm -r %{buildroot}%{_datadir}/doc/%{name}/
 %postun -p /sbin/ldconfig
 %endif
 
-+%files tools
+%files tools
 %{_bindir}/mem*
 %{_mandir}/man1/mem*
 

@@ -6,6 +6,7 @@ env:
   BINTRAY_API_KEY: ${{ secrets.BINTRAY_API_KEY }}
   DOCKER_USER: ${{ secrets.DOCKER_USER }}
   DOCKER_PASS: ${{ secrets.DOCKER_PASS }}
+  BINTRAY_REPO: custom
   RL8: 8.7.20221112
   RL8TAG: 8.7.20221112
   OS9: stream9-20221206.0

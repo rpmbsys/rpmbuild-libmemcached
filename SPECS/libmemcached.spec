@@ -1,61 +1,92 @@
-# spec file for libmemcached
+# Fedora spec file for libmemcached-awesome from
 #
-# Copyright (c) 2009-2017 Remi Collet
+# remirepo spec file for libmemcached-awesome
+#
+# Copyright (c) 2009-2022 Remi Collet
 # License: CC-BY-SA
-# http://creativecommons.org/licenses/by-sa/4.0/
+# https://creativecommons.org/licenses/by-sa/4.0/
 #
 # Please, preserve the changelog entries
 #
 # Lot of tests are broken making test suite unusable
-%global with_tests       0%{?_witht_tests:1}
-%global with_sasl        1
-%global libname          libmemcached
+%bcond_without               tests
+
+%global libname              libmemcached
+
+%global gh_commit            6e713c39031ff312164cc3ff12f943f8e8e01885
+%global gh_short             %(c=%{gh_commit}; echo ${c:0:7})
+%global gh_owner             awesomized
+%global gh_project           libmemcached
+
+%global upstream_version     1.1.3
+#global upstream_prever      beta3
 
 %define _debugsource_template %{nil}
 %define debug_package %{nil}
 
-Name:      libmemcached
+Name:      %{libname}-awesome
 Summary:   Client library and command line tools for memcached server
-Version:   1.0.18
-Release:   10%{?dist}
-License:   BSD
-Group:     Applications/System
-URL:       http://libmemcached.org/
-# Original sources:
-#   http://launchpad.net/libmemcached/1.0/%{version}/+download/libmemcached-%{version}.tar.gz
-# The source tarball must be repackaged to remove the Hsieh hash
-# code, since the license is non-free.  When upgrading, download the new
-# source tarball, and run "./strip-hsieh.sh <version>" to produce the
-# "-exhsieh" tarball.
-Source0:   %{libname}-%{version}-exhsieh.tar.gz
+Version:   %{upstream_version}%{?upstream_prever:~%{upstream_prever}}
+Release:   1%{?dist}
+# SPDX:
+License:   BSD-3-Clause
+URL:       https://github.com/%{gh_owner}/%{gh_project}
+Source0:   https://github.com/%{gh_owner}/%{gh_project}/archive/%{gh_commit}/%{gh_project}-%{version}-%{gh_short}.tar.gz
 
-%if %{with_sasl}
+
+BuildRequires: cmake >= 3.9
+BuildRequires: gcc
+BuildRequires: gcc-c++
 BuildRequires: cyrus-sasl-devel
-%endif
 BuildRequires: flex
 BuildRequires: bison
-BuildRequires: python-sphinx
+BuildRequires: python3-sphinx
 BuildRequires: memcached
-%if 0%{?fedora} >= 12 || 0%{?rhel} >= 6
 BuildRequires: systemtap-sdt-devel
-%endif
-BuildRequires: libevent-devel
+BuildRequires: libevent-devel > 2
+BuildRequires: openssl-devel
 
 Provides:      bundled(bobjenkins-hash)
-Requires:      %{name}-libs%{?_isa} = %{version}-%{release}
-
-Patch0: libmemcached-fix-linking-with-libpthread.patch
-# Fix: ISO C++ forbids comparison between pointer and integer [-fpermissive]
-# https://bugs.launchpad.net/libmemcached/+bug/1663985
-Patch1: %{libname}-build.patch
-
+# package rename
+Obsoletes:     %{libname}-libs         < 1.1
+Provides:      %{libname}-libs         = %{version}-%{release}
+Provides:      %{libname}-libs%{?_isa} = %{version}-%{release}
 
 %description
-libmemcached is a C/C++ client library and tools for the memcached server
-(http://memcached.org/). It has been designed to be light on memory
-usage, and provide full access to server side methods.
+%{name} is a C/C++ client library and tools for the memcached
+server (https://memcached.org/). It has been designed to be light
+on memory usage, and provide full access to server side methods.
 
-It also implements several command line tools:
+This is a resurrection of the original work from Brian Aker at libmemcached.org.
+
+%package devel
+Summary:    Header files and development libraries for %{name}
+
+Requires:   cyrus-sasl-devel%{?_isa}
+Requires:   %{name}%{?_isa} = %{version}-%{release}
+# package rename
+Obsoletes:  %{libname}-devel         < 1.1
+Provides:   %{libname}-devel         = %{version}-%{release}
+Provides:   %{libname}-devel%{?_isa} = %{version}-%{release}
+
+%description devel
+This package contains the header files and development libraries
+for %{name}. If you like to develop programs using %{name},
+you will need to install %{name}-devel.
+
+Documentation: https://awesomized.github.io/libmemcached
+
+%package tools
+Summary:    %{name} tools
+
+Requires:   %{name}%{?_isa} = %{version}-%{release}
+# package rename
+Obsoletes:  %{libname}         < 1.1
+Provides:   %{libname}         = %{version}-%{release}
+Provides:   %{libname}%{?_isa} = %{version}-%{release}
+
+%description tools
+This package contains the %{libname}-awesome command line tools:
 
 memaslap    Load testing and benchmarking a server
 memcapable  Checking a Memcached server capibilities and compatibility
@@ -73,106 +104,73 @@ memstat     Dump the stats of your servers to standard output
 memtouch    Touches a key
 
 
-%package devel
-Summary:    Header files and development libraries for %{name}
-Group:      Development/Libraries
-Requires:   %{name}%{?_isa} = %{version}-%{release}
-Requires:   pkgconfig
-%if %{with_sasl}
-Requires:   cyrus-sasl-devel%{?_isa}
-%endif
-
-%description devel
-This package contains the header files and development libraries
-for %{name}. If you like to develop programs using %{name},
-you will need to install %{name}-devel.
-
-
-%package libs
-Summary:    %{libname} libraries
-Group:      System Environment/Libraries
-
-%description libs
-This package contains the %{libname} libraries version %{version}.
-
-
 %prep
-%setup -q -n %{libname}-%{version}
-%patch0 -p1 -b .link
-%patch1 -p1 -b .build
+%setup -q -n %{gh_project}-%{gh_commit}
 
-mkdir examples
-cp -p tests/*.{cc,h} examples/
+# drop test hanging in mock
+# and requiring some memcached build options
+rm test/tests/memcached/sasl.cpp
+rm test/tests/memcached/regression/lp_001-630-615.cpp
+
+# temporarily ignore with erratic failure
+rm test/tests/memcached/udp.cpp
+rm test/tests/memcached/regression/lp_000-583-031.cpp
 
 
 %build
-# option --with-memcached=false to disable server binary check (as we don't run test)
-%configure \
-%if %{with_tests}
-   --with-memcached=%{_bindir}/memcached \
-%else
-   --with-memcached=false \
-%endif
-%if %{with_sasl}
-   --enable-sasl \
-%else
-   --disable-sasl \
-%endif
-   --enable-libmemcachedprotocol \
-   --enable-memaslap \
-   --enable-dtrace \
-   --disable-static
+%cmake \
+  -DBUILD_TESTING:BOOL=ON \
+  -DBUILD_DOCS_MAN:BOOL=ON \
+  -DBUILD_DOCS_MANGZ:BOOL=OFF \
+  -DENABLE_SASL:BOOL=ON \
+  -DENABLE_DTRACE:BOOL=ON \
+  -DENABLE_OPENSSL_CRYPTO:BOOL=ON \
+  -DENABLE_HASH_HSIEH:BOOL=ON \
+  -DENABLE_HASH_FNV64:BOOL=ON \
+  -DENABLE_HASH_MURMUR:BOOL=ON \
+  -DENABLE_MEMASLAP:BOOL=ON
 
-%if 0%{?fedora} < 14 && 0%{?rhel} < 7
-# for warning: unknown option after '#pragma GCC diagnostic' kind
-sed -e 's/-Werror//' -i Makefile
-%endif
-
-make %{_smp_mflags} V=1
+%cmake_build
 
 
 %install
-make install  DESTDIR="%{buildroot}" AM_INSTALL_PROGRAM_FLAGS=""
+%cmake_install
 
-# Hack: when sphinx-build too old (fedora < 14 and rhel < 7)
-# install upstream provided man pages
-if [ ! -d %{buildroot}%{_mandir}/man1 ]; then
-   install -d %{buildroot}%{_mandir}/man1
-   install -p -m 644 man/*1 %{buildroot}%{_mandir}/man1
-   install -d %{buildroot}%{_mandir}/man3
-   install -p -m 644 man/*3 %{buildroot}%{_mandir}/man3
-fi
+mv %{buildroot}%{_datadir}/%{name}/example.cnf support
+
+rm -r %{buildroot}%{_datadir}/doc/%{name}/
 
 
 %check
-%if %{with_tests}
+%if %{with tests}
 : Run test suite
-make test
+%ctest
 %else
 : Skip test suite
 %endif
 
+%if 0%{?fedora} < 24 && 0%{?rhel} < 8
+%post -p /sbin/ldconfig
 
-%post   libs -p /sbin/ldconfig
+%postun -p /sbin/ldconfig
+%endif
 
-%postun libs -p /sbin/ldconfig
-
-
-%files
++%files tools
 %{_bindir}/mem*
-%exclude %{_libdir}/lib*.la
 %{_mandir}/man1/mem*
 
-%files libs
-%license COPYING
-%doc AUTHORS README THANKS TODO ChangeLog
+%files
+%license LICENSE
 %{_libdir}/libhashkit.so.2*
 %{_libdir}/libmemcached.so.11*
 %{_libdir}/libmemcachedprotocol.so.0*
 %{_libdir}/libmemcachedutil.so.2*
 
 %files devel
-%doc examples
+%doc example
+%doc *.md
+%doc AUTHORS
+%doc support/example.cnf
 %{_includedir}/libmemcached
 %{_includedir}/libmemcached-1.0
 %{_includedir}/libhashkit
@@ -184,6 +182,7 @@ make test
 %{_libdir}/libmemcachedprotocol.so
 %{_libdir}/libmemcachedutil.so
 %{_libdir}/pkgconfig/libmemcached.pc
+%{_libdir}/cmake/%{name}
 %{_datadir}/aclocal/ax_libmemcached.m4
 %{_mandir}/man3/libmemcached*
 %{_mandir}/man3/libhashkit*
@@ -192,219 +191,37 @@ make test
 
 
 %changelog
-* Thu Aug 03 2017 Fedora Release Engineering <releng@fedoraproject.org> - 1.0.18-10
-- Rebuilt for https://fedoraproject.org/wiki/Fedora_27_Binutils_Mass_Rebuild
+* Wed Nov  9 2022 Remi Collet <remi@remirepo.net> - 1.1.3-1
+- update to 1.1.3
 
-* Wed Jul 26 2017 Fedora Release Engineering <releng@fedoraproject.org> - 1.0.18-9
-- Rebuilt for https://fedoraproject.org/wiki/Fedora_27_Mass_Rebuild
+* Wed Aug 10 2022 Remi Collet <remi@remirepo.net> - 1.1.2-1
+- update to 1.1.2
 
-* Sat Feb 12 2017 Remi Collet <remi@fedoraproject.org> - 1.0.18-8
-- add build patch to fix FTBFS
+* Mon Sep 20 2021 Remi Collet <remi@remirepo.net> - 1.1.1-1
+- update to 1.1.1
 
-* Fri Feb 10 2017 Fedora Release Engineering <releng@fedoraproject.org> - 1.0.18-8
-- Rebuilt for https://fedoraproject.org/wiki/Fedora_26_Mass_Rebuild
+* Thu Sep  9 2021 Remi Collet <remi@remirepo.net> - 1.1.0-8
+- devel requires cyrus-sasl-devel, fix #2002541
 
-* Thu Feb 04 2016 Fedora Release Engineering <releng@fedoraproject.org> - 1.0.18-7
-- Rebuilt for https://fedoraproject.org/wiki/Fedora_24_Mass_Rebuild
+* Tue Jul 27 2021 Remi Collet <remi@remirepo.net> - 1.1.0-6
+- add LIBMEMCACHED_AWESOME macro from
+  https://github.com/awesomized/libmemcached/pull/115
 
-* Wed Jun 17 2015 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 1.0.18-6
-- Rebuilt for https://fedoraproject.org/wiki/Fedora_23_Mass_Rebuild
+* Mon Jul 26 2021 Remi Collet <remi@remirepo.net> - 1.1.0-5
+- fix missing HAVE_SSIZE_T macro using patch from
+  https://github.com/awesomized/libmemcached/pull/117
 
-* Sat May 02 2015 Kalev Lember <kalevlember@gmail.com> - 1.0.18-5
-- Rebuilt for GCC 5 C++11 ABI change
+* Thu Jul 22 2021 Fedora Release Engineering <releng@fedoraproject.org> - 1.1.0-4
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_35_Mass_Rebuild
 
-* Sun Aug 17 2014 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 1.0.18-4
-- Rebuilt for https://fedoraproject.org/wiki/Fedora_21_22_Mass_Rebuild
+* Tue Jul 13 2021 Remi Collet <remi@remirepo.net> - 1.1.0-3
+- use upstream patch for libcrypto
 
-* Sat Jun 07 2014 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 1.0.18-3
-- Rebuilt for https://fedoraproject.org/wiki/Fedora_21_Mass_Rebuild
+* Fri Jun 25 2021 Remi Collet <remi@remirepo.net> - 1.1.0-2
+- remove internal AES implementation and use libcrypto
+  https://github.com/awesomized/libmemcached/pull/114
+- fix build ussing upstream patch to update catch version
 
-* Wed Feb 19 2014 Remi Collet <remi@fedoraproject.org> - 1.0.18-2
-- cleanups
-
-* Wed Feb 19 2014 Remi Collet <remi@fedoraproject.org> - 1.0.18-1
-- update to 1.0.18
-- disable test suite (too much broken tests)
-
-* Sat Dec 14 2013 Remi Collet <remi@fedoraproject.org> - 1.0.16-2
-- move libraries in new libs sub packages
-- add provides for bundled(bobjenkins-hash) #1041351
-- apply libpthread workaround #1037707
-- spec cleanups
-
-* Tue Dec 03 2013 Ruben Kerkhof <ruben@rubenkerkhof.com> 1.0.16-2
-- Fix linking against libpthread as a workaround for libtool bug #661333
-
-* Mon Aug  5 2013 Remi Collet <remi@fedoraproject.org> - 1.0.16-1
-- revert to 1.0.16 for fedora 20
-
-* Mon Aug  5 2013 Remi Collet <remi@fedoraproject.org> - 1.0.17-2
-- fix BR, libasan don't exist on all arch
-- disable all sanitize options (only for dev)
-
-* Sat Aug 03 2013 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 1.0.17-2
-- Rebuilt for https://fedoraproject.org/wiki/Fedora_20_Mass_Rebuild
-
-* Thu Apr  4 2013 Remi Collet <remi@fedoraproject.org> - 1.0.17-1
-- update to 1.0.17
-- fix option --with-memcached and report regression
-  https://bugs.launchpad.net/libmemcached/+bug/1164440
-- broken build when -fsanitize=thread available
-  https://bugs.launchpad.net/libmemcached/+bug/1164442
-
-* Mon Feb  4 2013 Remi Collet <remi@fedoraproject.org> - 1.0.16-1
-- update to 1.0.16
-- ignore test result for memaslap (XFAIL but PASS)
-  https://bugs.launchpad.net/libmemcached/+bug/1115357
-
-* Sat Dec 29 2012 Remi Collet <remi@fedoraproject.org> - 1.0.15-1
-- update to 1.0.15
-- libmemcachedprotocol is back
-- add memaslap command line tool
-- report various issues to upstream
-  https://bugs.launchpad.net/libmemcached/+bug/1094413 (libevent)
-  https://bugs.launchpad.net/libmemcached/+bug/1094414 (c99 MODE)
-
-* Sat Nov 17 2012 Remi Collet <remi@fedoraproject.org> - 1.0.14-1
-- update to 1.0.14
-- libmemcachedprotocol removed
-- sasl support is back
-- run test during build
-- report various issues to upstream
-  https://bugs.launchpad.net/libmemcached/+bug/1079994 (bigendian)
-  https://bugs.launchpad.net/libmemcached/+bug/1079995 (config.h)
-  https://bugs.launchpad.net/libmemcached/+bug/1079996 (dtrace)
-  https://bugs.launchpad.net/libmemcached/+bug/1079997 (-ldl)
-  https://bugs.launchpad.net/libmemcached/+bug/1080000 (touch)
-
-* Sat Oct 20 2012 Remi Collet <remi@fedoraproject.org> - 1.0.13-1
-- update to 1.0.13
-
-* Fri Oct 19 2012 Remi Collet <remi@fedoraproject.org> - 1.0.12-2
-- temporary hack: fix LIBMEMCACHED_VERSION_HEX value
-
-* Thu Oct 11 2012 Remi Collet <remi@fedoraproject.org> - 1.0.12-1
-- update to 1.0.12
-- add aclocal/ax_lib_libmemcached.m4
-- abi-compliance-checker verdict : Compatible
-- uggly hack for man pages
-
-* Tue Sep 25 2012 Karsten Hopp <karsten@redhat.com> 1.0.11-2
-- fix defined but not used variable error on bigendian machines
-
-* Sat Sep 22 2012 Remi Collet <remi@fedoraproject.org> - 1.0.11-1
-- update to 1.0.11, soname bump to libmemcached.so.11
-- drop broken SASL support
-- don't generate parser (bison 2.6 not supported)
-
-* Thu Jul 19 2012 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 1.0.8-2
-- Rebuilt for https://fedoraproject.org/wiki/Fedora_18_Mass_Rebuild
-
-* Sun May 27 2012 Remi Collet <remi@fedoraproject.org> - 1.0.8-1
-- update to 1.0.8
-
-* Sun Apr 22 2012 Remi Collet <remi@fedoraproject.org> - 1.0.7-1
-- update to 1.0.7
-- regenerate parser using flex/bison (#816766)
-
-* Sun Apr 22 2012 Remi Collet <remi@fedoraproject.org> - 1.0.6-2
-- workaround for SASL detection
-
-* Sat Apr 21 2012 Remi Collet <remi@fedoraproject.org> - 1.0.6-1
-- update to 1.0.6
-- soname bump to libmemcached.so.10 and libhashkit.so.2
-
-* Sat Mar 03 2012 Remi Collet <remi@fedoraproject.org> - 1.0.4-1
-- update to 1.0.4
-- soname bump to libmemcached.so.9
-- update description
-
-* Tue Feb 28 2012 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 1.0.2-3
-- Rebuilt for c++ ABI breakage
-
-* Fri Jan 13 2012 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 1.0.2-2
-- Rebuilt for https://fedoraproject.org/wiki/Fedora_17_Mass_Rebuild
-
-* Thu Oct 27 2011 Remi Collet <remi@fedoraproject.org> - 1.0.2-1
-- update to 1.0.2
-
-* Sun Oct 16 2011 Remi Collet <remi@fedoraproject.org> - 0.53-1
-- update to 0.53
-
-* Sat Sep 17 2011 Remi Collet <remi@fedoraproject.org> - 0.52-1
-- update to 0.52
-
-* Sun Jul 31 2011 Remi Collet <remi@fedoraproject.org> - 0.51-1
-- update to 0.51 (soname bump libmemcached.so.8)
-
-* Thu Jun 02 2011 Remi Collet <Fedora@famillecollet.com> - 0.49-1
-- update to 0.49
-- add build option : --with tests
-
-* Mon Feb 28 2011 Remi Collet <Fedora@famillecollet.com> - 0.47-1
-- update to 0.47
-- remove patch merged upstream
-
-* Sun Feb 20 2011 Remi Collet <Fedora@famillecollet.com> - 0.46-2
-- patch Makefile.in instead of include.am (to avoid autoconf)
-- donc requires pkgconfig with arch
-
-* Fri Feb 18 2011 Remi Collet <Fedora@famillecollet.com> - 0.46-1
-- update to 0.46
-
-* Sat Feb 12 2011 Remi Collet <Fedora@famillecollet.com> - 0.44-6
-- arch specific requires
-
-* Tue Feb 08 2011 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 0.44-5
-- Rebuilt for https://fedoraproject.org/wiki/Fedora_15_Mass_Rebuild
-
-* Wed Nov 24 2010 Joe Orton <jorton@redhat.com> - 0.44-4
-- repackage source tarball to remove non-free Hsieh hash code
-
-* Sat Oct 02 2010 Remi Collet <Fedora@famillecollet.com> - 0.44-3
-- improves SASL patch
-
-* Sat Oct 02 2010 Remi Collet <Fedora@famillecollet.com> - 0.44-2
-- enable SASL support
-
-* Fri Oct 01 2010 Remi Collet <Fedora@famillecollet.com> - 0.44-1
-- update to 0.44
-- add soname version in %%file to detect change
-
-* Fri Jul 30 2010 Remi Collet <Fedora@famillecollet.com> - 0.43-1
-- update to 0.43
-
-* Wed Jul 07 2010 Remi Collet <Fedora@famillecollet.com> - 0.42-1
-- update to 0.42
-
-* Tue May 04 2010 Remi Collet <Fedora@famillecollet.com> - 0.40-1
-- update to 0.40 (new soname for libmemcached.so.5)
-- new URI (site + source)
-
-* Sat Mar 13 2010 Remi Collet <Fedora@famillecollet.com> - 0.38-1
-- update to 0.38
-
-* Sat Feb 06 2010 Remi Collet <Fedora@famillecollet.com> - 0.37-1
-- update to 0.37 (soname bump)
-- new libhashkit (should be a separated project in the futur)
-
-* Sun Sep 13 2009 Remi Collet <Fedora@famillecollet.com> - 0.31-1
-- update to 0.31
-
-* Fri Jul 24 2009 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 0.30-2
-- Rebuilt for https://fedoraproject.org/wiki/Fedora_12_Mass_Rebuild
-
-* Sun Jun 14 2009 Remi Collet <Fedora@famillecollet.com> - 0.30-1
-- update to 0.30
-
-* Tue May 19 2009 Remi Collet <Fedora@famillecollet.com> - 0.29-1
-- update to 0.29
-
-* Fri May 01 2009 Remi Collet <Fedora@famillecollet.com> - 0.28-2
-- add upstream patch to disable nonfree hsieh hash method
-
-* Sat Apr 25 2009 Remi Collet <Fedora@famillecollet.com> - 0.28-1
-- Initial RPM from Brian Aker spec
-- create -devel subpackage
-- add %%post %%postun %%check section
-
+* Thu Jun 24 2021 Remi Collet <remi@remirepo.net> - 1.1.0-1
+- Initial RPM from libmemcached-awesome
+  from old libmemcached spec file

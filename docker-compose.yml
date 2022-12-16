@@ -1,14 +1,11 @@
-version: "3.4"
+version: "3"
 services:
   centos7build:
     volumes:
-      - rpms:/home/centos/rpmbuild/SRPMS
       - rpm7:/home/centos/rpmbuild/RPMS
     build:
       context: .
 
 volumes:
-  rpms:
-    name: rpms
   rpm7:
     name: rpm7

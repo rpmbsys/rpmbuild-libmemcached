@@ -1,5 +1,6 @@
 ARG os=8.7.20221112
-FROM aursu/rpmbuild:${os}-build
+ARG image=build
+FROM aursu/rpmbuild:${os}-${image}
 
 USER root
 RUN dnf -y install \
